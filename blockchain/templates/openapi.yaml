@@ -1,0 +1,265 @@
+openapi: "3.1.0"
+info:
+  title: "Crypto Transaction API"
+  version: "1.0.1"
+  description: "API dla systemu kryptowalutowego opartego na blockchain, umożliwiające tworzenie transakcji, generowanie portfeli, sprawdzanie ich statusu oraz pobieranie salda."
+servers:
+  - url: "http://localhost:8080"
+paths:
+  /wallet:
+    get:
+      summary: "Create wallet"
+      operationId: createWallet
+      responses:
+        "200":
+          description: "Nowy portfel został wygenerowany"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Wallet"
+        "500":
+          description: "Błąd generowania portfela"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /transaction:
+    get:
+      summary: "Find transaction"
+      operationId: getTransaction
+      parameters:
+        - in: query
+          name: txid
+          required: true
+          schema:
+            type: string
+          description: "Key of transaction"
+      responses:
+        "200":
+          description: "Transaction found"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transaction"
+        "404":
+          description: "Transaction not found"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      summary: "Create transaction"
+      operationId: createTransaction
+      requestBody:
+        description: "Obiekt żądania tworzenia transakcji"
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransactionRequest"
+      responses:
+        "200":
+          description: "Transakcja utworzona i dodana do puli"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  txid:
+                    type: string
+                    description: "Identyfikator transakcji (hash)"
+                  message:
+                    type: string
+                    description: "Komunikat informacyjny"
+        "400":
+          description: "Błędne żądanie"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /balance:
+    get:
+      summary: "Find balance"
+      operationId: getBalance
+      parameters:
+        - in: query
+          name: pubkey
+          required: true
+          description: "Public key of the account"
+          example: cdecf033112c6fcdb8d49e24b8bcac8ddae7d212fbcd56fd5f29678e4c596c3ea852424025d1a8fcc0857171a6af9ee3116fd2cfe8043ec8e005520d9a2f7d14
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "Saldo pobrane poprawnie"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pubkey:
+                    type: string
+                    description: "Klucz publiczny (hex)"
+                  balance:
+                    type: integer
+                    description: "Saldo konta"
+        "400":
+          description: "Błędne żądanie"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /mine:
+    post:
+      summary: "Mine new block"
+      operationId: mineBlock
+      parameters:
+        - in: query
+          name: pub
+          required: true
+          example: cdecf033112c6fcdb8d49e24b8bcac8ddae7d212fbcd56fd5f29678e4c596c3ea852424025d1a8fcc0857171a6af9ee3116fd2cfe8043ec8e005520d9a2f7d14
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "Blok został pomyślnie wydobyty"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MineResponse"
+        "400":
+          description: "Błędne żądanie"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: "Błąd serwera podczas wydobycia bloku"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+components:
+  schemas:
+    Wallet:
+      type: object
+      description: "Obiekt portfela zawierający klucz prywatny i klucz publiczny"
+      properties:
+        privateKey:
+          type: string
+          description: "Klucz prywatny w formacie hex"
+        publicKey:
+          type: object
+          properties:
+            x:
+              type: string
+              description: "Składowa X klucza publicznego (hex)"
+            y:
+              type: string
+              description: "Składowa Y klucza publicznego (hex)"
+      required:
+        - privateKey
+        - publicKey
+    TransactionRequest:
+      type: object
+      description: "Obiekt żądania tworzenia transakcji"
+      properties:
+        senderPubKey:
+          type: string
+          description: "Klucz publiczny nadawcy (hex)"
+          example: "cdecf033112c6fcdb8d49e24b8bcac8ddae7d212fbcd56fd5f29678e4c596c3ea852424025d1a8fcc0857171a6af9ee3116fd2cfe8043ec8e005520d9a2f7d14"
+        senderPrivKey:
+          type: string
+          description: "Klucz prywatny nadawcy (hex), używany do podpisywania transakcji"
+          example: "7b071d67dfff912ee31c397c027b5895d054f4db8ea5276294bac3bb4655a4da"
+        receiverPubKey:
+          type: string
+          description: "Klucz publiczny odbiorcy (hex)"
+          example: "b999764c292a282fdbe1bef425f3cda97900d9ea4408af08ea52c34881a25ab60ef7129fb740ed9616df92be15d3908b6e7abd1d5d6293f13384fb805ec01f08"
+        amount:
+          type: integer
+          description: "Kwota do przesłania"
+          example: 10
+        fee:
+          type: integer
+          description: "Opłata transakcyjna"
+      required:
+        - senderPubKey
+        - senderPrivKey
+        - receiverPubKey
+        - amount
+        - fee
+    Transaction:
+      type: object
+      description: "Struktura transakcji"
+      properties:
+        Version:
+          type: integer
+          example: 1
+        Inputs:
+          type: array
+          items:
+            $ref: "#/components/schemas/Input"
+        Outputs:
+          type: array
+          items:
+            $ref: "#/components/schemas/Output"
+        Timestamp:
+          type: integer
+          description: "Znacznik czasu (Unix timestamp) utworzenia transakcji"
+        Fee:
+          type: integer
+          description: "Opłata transakcyjna"
+    Input:
+      type: object
+      description: "Wejście transakcji"
+      properties:
+        PreviousKey:
+          type: string
+          description: "Klucz referencyjny poprzedniego UTXO (np. 'genesis')"
+        OutputIndex:
+          type: integer
+          description: "Indeks wyjścia w poprzedniej transakcji"
+        Signature:
+          type: string
+          description: "Podpis cyfrowy (hex)"
+        PubKey:
+          type: string
+          description: "Klucz publiczny nadawcy (hex)"
+      required:
+        - PreviousKey
+        - OutputIndex
+        - Signature
+        - PubKey
+    Output:
+      type: object
+      description: "Wyjście transakcji"
+      properties:
+        Value:
+          type: integer
+          description: "Kwota do przekazania"
+        PubKey:
+          type: string
+          description: "Klucz publiczny odbiorcy (hex)"
+      required:
+        - Value
+        - PubKey
+    Error:
+      type: object
+      description: "Komunikat o błędzie"
+      properties:
+        error:
+          type: string
+          description: "Szczegóły błędu"
+    MineResponse:
+      type: object
+      description: "Odpowiedź zwracana po pomyślnym wydobyciu bloku"
+      properties:
+        message:
+          type: string
+          description: "Komunikat potwierdzający wydobycie"
+          example: "Block mined successfully"
+        blockHash:
+          type: string
+          description: "Hash nowo utworzonego bloku"
+          example: "000abc123..."
