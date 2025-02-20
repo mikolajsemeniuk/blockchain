@@ -24,7 +24,7 @@ type Chain struct {
 func NewChain() (*Chain, error) {
 	pool := NewPool()
 
-	set, err := NewSet("utxo")
+	set, err := NewSet("utxo.db")
 	if err != nil {
 		return nil, err
 	}
